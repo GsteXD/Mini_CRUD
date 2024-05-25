@@ -1,4 +1,3 @@
- //Código Base para o Mini-Projeto Agenda de Amigos
 #include <stdio.h>
 #include <locale.h>
 #include <string.h>
@@ -11,7 +10,7 @@ struct ficha{ //cria uma variável estrutura ficha
 	char telefone[20];
 };
 
-int procurar(struct ficha vetor[], int num_fichas){
+int procurar(struct ficha vetor[], int num_fichas){ //Procura elementos na ficha
 
     int i;
     char procurado[40];
@@ -34,21 +33,25 @@ void ler_arquivo(struct ficha vetor[], int *num_fichas, int op){
 	char nome_arquivo[40];
 
 	printf("Informe o nome do arquivo: ");
-	fgets(nome_arquivo, 40, stdin);
+	fgets(nome_arquivo, sizeof(nome_arquivo), stdin); //adquire o nome do arquivo, que é limitado de acordo com o seu próprio tamanho.
 
-	fp = fopen(nome_arquivo, "r"); //Define a variável fp como uma função "fopen", onde deve ser especificado o nome do arquivo e seu tipo de parâmetro
-								 	//que neste caso, é leitura.
+	nome_arquivo[strcspn(nome_arquivo, "\n")] = '\0'; //Remove caracteres extras indesejados(como o ENTER).
 
-	if(!fp){
+	fp = fopen(nome_arquivo, "r"); //Lê o arquivo.
+	
+	if(!fp){ //Verificador para caso ocorra algum erro, que seja avisado para o usuário.
 		printf("Erro na abertura do arquivo");
 		exit(-1);
-	} else if(op == 1) { //Texto
+
+	} 
+	
+	if(op == 1) { //Texto
 		char buffer[101];
-		fgets (buffer, 100, fp); //Primeira Linha 
+		fgets (buffer, 100, fp); //Primeira Linha
 
 		*num_fichas = atoi(buffer); //Os valores apontados em num_fichas assumirão os valores inteiros do buffer
 
-		for(int i=0; i < *num_fichas;i++){
+		for(int i=0; i<*num_fichas;i++){
 			fflush(stdin);
 			fgets(vetor[i].nome, 40, fp);
 			fgets(vetor[i].telefone, 20, fp);
@@ -59,14 +62,16 @@ void ler_arquivo(struct ficha vetor[], int *num_fichas, int op){
 		int i = 0;
 
 		while(!feof(fp)){ //Verificador para saber quando chegou ao final do arquivo
-			fscanf(fp, "%40[^,],", vetor[i].nome); //Lê dados de nome de fp, excluindo todo o conjunto de vírgulas do arquivo.
-			fscanf(fp, "%20[^\n]\n", vetor[i].telefone); //Lê dados de telefone de fp, excluindo todos os espaçamentos \n de sua leitura.
+			fscanf(fp, "%39[^,],", vetor[i].nome); //Lê dados nome do fp, retirando toda a vírgula que haver no arquivo
+			fscanf(fp, "%20[^\n]\n", vetor[i].telefone); //Lê dados telefone de fp, retirando todo espaçamento \n que houver
 			i++; //Passa para a próxima posição.
 		}
 		*num_fichas = i; //Aponta que o valor assumido de num_fichas deve ser igual ao valor de i.
 		fclose(fp); //Fecha o arquivo
 
 	} else { //binário
+		fopen(nome_arquivo, "rb"); //reabre o arquivo para escrita em binário;
+
 		fread(num_fichas, sizeof(int), 1, fp); //são lidos os valores apontados em num_fichas, o seu tamanho de bits(em int),
 											   //a quantidade de elementos e da onde os dados serão lidos apontados por fp.
 
@@ -76,15 +81,55 @@ void ler_arquivo(struct ficha vetor[], int *num_fichas, int op){
 	}
 }
 
-void 
+void escrever_arquivo(struct ficha vetor[], int num_fichas, int op){
+	FILE *fp;
+	char nome_arquivo[40];
+
+	printf("Informe o nome do arquivo: ");
+	fgets(nome_arquivo, sizeof(nome_arquivo), stdin); //adquire o nome do arquivo, que é limitado de acordo com o seu próprio tamanho.
+
+	nome_arquivo[strcspn(nome_arquivo, "\n")] = '\0'; //Remove caracteres extras indesejados(como o ENTER).
+
+	fp = fopen(nome_arquivo, "w"); //Escreve/cria o arquivo.
+	
+	if(!fp){ //Verificador para caso ocorra algum erro, que seja avisado para o usuário.
+		printf("Erro na abertura do arquivo");
+		exit(-1);
+
+	} 
+
+	if(op == 1){ //Texto
+		fprintf (fp, "%d\n", num_fichas); 
+
+		for(int i=0; i<num_fichas;i++){
+			fprintf(fp, "%s\n", vetor[i].nome);
+			fprintf(fp, "%s\n", vetor[i].telefone);
+		}
+		fclose(fp);
+
+	} else if(op == 2){ //Planilha
+		for(int i=0;i<num_fichas;i++){
+			fprintf(fp, "%s, %s\n", vetor[i].nome, vetor[i].telefone);
+		}
+		fclose(fp);
+
+	} else { //Binário
+		freopen(nome_arquivo, "wb", fp); //reabre o arquivo para escrita em binário;
+
+		fwrite(&num_fichas, sizeof(int), 1, fp);
+		fwrite(vetor, sizeof(struct ficha), num_fichas, fp);
+		fclose(fp);
+	}
+
+}
 
 int main()
 {
 	struct ficha agenda[10];
-	int fichas_existentes = 0, proxima = 0;
+	int fichas_existentes = 0, proxima = 0, operacao;
 	char opcao[10]="0"; 
     setlocale(LC_ALL, "Portuguese_Brazil");
-	while(opcao[0] != '6')
+	while(opcao[0] != '8')
 	{
 		system("cls"); //Limpa a tela no ínicio de cada loop
 
@@ -94,8 +139,9 @@ int main()
 		printf("\n3) Listar toda a base:");
 		printf("\n4) Excluir por nome:");
 		printf("\n5) Atualizar informações:");
-		printf("\n6) Salvar informações:");
-		printf("\n7) Sair\n\n");
+		printf("\n6) Exportar informações:");
+		printf("\n7) Importar informações:");
+		printf("\n8) Sair\n\n");
 		fgets(opcao, 2, stdin);
         fflush(stdin);
 
@@ -107,7 +153,7 @@ int main()
 				printf("\nEntre com um telefone:");
 				fgets(agenda[proxima].telefone, 20, stdin);
 
-				printf("Operaçõa realizada com sucesso!");
+				printf("Operação realizada com sucesso!");
 				sleep(2.00);
 
 				fichas_existentes++;
@@ -121,6 +167,9 @@ int main()
 				if(linha != -1){
 					printf("\nTelefone:%s", agenda[linha].telefone);
 				}
+
+				printf("\nAperte ENTER para continuar");
+				getchar();
 			break;
 
 			case '3': //Listar Tudo
@@ -176,24 +225,45 @@ int main()
 			case '6': //Salvar
 				system("cls");
 
-				int operacao;
 				printf("\nInforme o método de salvamento:\n");
 				printf("\n1) Arquivo texto");
-				printf("\n2) Planilha:");
-				printf("\n3) Arquivo binário:");
+				printf("\n2) Planilha");
+				printf("\n3) Arquivo binário");
 				printf("\n4) Sair\n\n");
 				scanf("%i", &operacao);
-
-
+				fflush(stdin);
+				if(operacao == 4){
+					break;
+				}
+				
+				escrever_arquivo(agenda, fichas_existentes, operacao);
 
 			break;
 
-			case '7':
+			case '7': //Ler
+				system("cls");
+
+				printf("\nInforme o tipo de leitura:\n");
+				printf("\n1) Arquivo texto");
+				printf("\n2) Planilha");
+				printf("\n3) Arquivo binário");
+				printf("\n4) Sair\n\n");
+				scanf("%i", &operacao);
+				fflush(stdin);
+				if(operacao == 4){
+					break;
+				}
+
+				ler_arquivo(agenda, &fichas_existentes, operacao);
+
+			break;
+
+			case '8': //Sair
 				printf("Saindo...");
 				sleep(2.00);
 			break;
 
-			default:
+			default: //ERRO
 				printf("Opção inválida!");
 				sleep(1.00);
 			break;
